@@ -25,7 +25,18 @@ struct TransferView: View {
 
                 ZStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 10) {
-                        LabelText(text: "粘贴文案 · 自动识别")
+                        HStack {
+                            LabelText(text: "粘贴文案 · 自动识别")
+                            Spacer()
+                            Button {
+                                store.importClipboard()
+                            } label: {
+                                Image(systemName: "doc.on.clipboard")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(AppTheme.accent)
+                            }
+                            .buttonStyle(.plain)
+                        }
                         TextEditor(text: $store.sourceText)
                             .focused($inputFocused)
                             .font(AppFont.mono(size: 10.5))
@@ -48,7 +59,7 @@ struct TransferView: View {
                     Text("识别到 ")
                         .font(AppFont.sans(size: 12))
                         .foregroundColor(AppTheme.secondaryText)
-                    Text("3")
+                    Text("\(store.links.count)")
                         .font(AppFont.mono(size: 12))
                         .foregroundColor(AppTheme.text)
                     Text(" 条链接")
@@ -81,8 +92,16 @@ struct TransferView: View {
                     .foregroundColor(AppTheme.secondaryText)
                     .padding(.top, 10)
                     .padding(.bottom, 20)
+                if let transferError = store.transferError {
+                    Text(transferError)
+                        .font(AppFont.sans(size: 11))
+                        .foregroundColor(AppTheme.amber)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 18)
+                }
             }
         }
+        .onChange(of: store.sourceText) { _ in store.refreshLinksFromSource() }
     }
 
     private var transferSummary: String {

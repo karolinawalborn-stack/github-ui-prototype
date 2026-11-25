@@ -1,68 +1,32 @@
 import Foundation
 
-enum AppTab: String, CaseIterable, Identifiable {
-    case transfer
-    case rewrite
-    case netdisk
-    case models
-
+enum AppTab: String, CaseIterable, Identifiable, Codable {
+    case transfer, rewrite, netdisk, models
     var id: String { rawValue }
-
     var title: String {
-        switch self {
-        case .transfer: return "转存"
-        case .rewrite: return "二创"
-        case .netdisk: return "网盘"
-        case .models: return "模型"
-        }
+        switch self { case .transfer: return "转存"; case .rewrite: return "二创"; case .netdisk: return "网盘"; case .models: return "模型" }
     }
-
     var symbol: String {
-        switch self {
-        case .transfer: return "arrow.down.to.line"
-        case .rewrite: return "pencil.line"
-        case .netdisk: return "externaldrive"
-        case .models: return "cpu"
-        }
+        switch self { case .transfer: return "arrow.down.to.line"; case .rewrite: return "pencil.line"; case .netdisk: return "externaldrive"; case .models: return "cpu" }
     }
 }
 
-enum NetdiskPlatform: String, CaseIterable, Identifiable {
-    case quark = "夸克网盘"
-    case baidu = "百度网盘"
-    case xunlei = "迅雷网盘"
-    case uc = "UC网盘"
-    case guangya = "光鸭网盘"
-
+enum NetdiskPlatform: String, CaseIterable, Identifiable, Codable {
+    case quark = "夸克网盘", baidu = "百度网盘", xunlei = "迅雷网盘", uc = "UC网盘", guangya = "光鸭网盘"
     var id: String { rawValue }
-
     var shortName: String {
-        switch self {
-        case .quark: return "夸"
-        case .baidu: return "百"
-        case .xunlei: return "迅"
-        case .uc: return "U"
-        case .guangya: return "光"
-        }
+        switch self { case .quark: return "夸"; case .baidu: return "百"; case .xunlei: return "迅"; case .uc: return "U"; case .guangya: return "光" }
     }
 }
 
-enum TransferStage: String, CaseIterable, Identifiable {
-    case parsing = "解析"
-    case saving = "转存"
-    case sharing = "建分享"
-    case replacing = "替换"
-
+enum TransferStage: String, CaseIterable, Identifiable, Codable {
+    case parsing = "解析", saving = "转存", sharing = "建分享", replacing = "替换"
     var id: String { rawValue }
 }
 
-enum TransferStageState: Equatable {
-    case pending
-    case running
-    case completed
-}
+enum TransferStageState: Equatable, Codable { case pending, running, completed }
 
-struct TransferLink: Identifiable, Equatable {
+struct TransferLink: Identifiable, Equatable, Codable {
     let id: UUID
     let platform: NetdiskPlatform
     let originalURL: String
@@ -71,24 +35,9 @@ struct TransferLink: Identifiable, Equatable {
     var newPassword: String?
     var stages: [TransferStageState]
 
-    init(
-        id: UUID = UUID(),
-        platform: NetdiskPlatform,
-        originalURL: String,
-        password: String? = nil,
-        newURL: String? = nil,
-        newPassword: String? = nil,
-        stages: [TransferStageState] = Array(repeating: .pending, count: TransferStage.allCases.count)
-    ) {
-        self.id = id
-        self.platform = platform
-        self.originalURL = originalURL
-        self.password = password
-        self.newURL = newURL
-        self.newPassword = newPassword
-        self.stages = stages
+    init(id: UUID = UUID(), platform: NetdiskPlatform, originalURL: String, password: String? = nil, newURL: String? = nil, newPassword: String? = nil, stages: [TransferStageState] = Array(repeating: .pending, count: TransferStage.allCases.count)) {
+        self.id = id; self.platform = platform; self.originalURL = originalURL; self.password = password; self.newURL = newURL; self.newPassword = newPassword; self.stages = stages
     }
-
     var displayURL: String { newURL ?? originalURL }
     var isComplete: Bool { stages.allSatisfy { $0 == .completed } }
 }
@@ -101,46 +50,23 @@ struct NetdiskAccount: Identifiable {
     let quotaUsed: Double
     let quotaLabel: String
     let directory: String
-
-    enum AccountState: Equatable {
-        case online
-        case relogin
-    }
-
-    init(
-        id: UUID = UUID(),
-        platform: NetdiskPlatform,
-        status: String,
-        state: AccountState,
-        quotaUsed: Double,
-        quotaLabel: String,
-        directory: String
-    ) {
-        self.id = id
-        self.platform = platform
-        self.status = status
-        self.state = state
-        self.quotaUsed = quotaUsed
-        self.quotaLabel = quotaLabel
-        self.directory = directory
+    enum AccountState: Equatable { case online, relogin }
+    init(id: UUID = UUID(), platform: NetdiskPlatform, status: String, state: AccountState, quotaUsed: Double, quotaLabel: String, directory: String) {
+        self.id = id; self.platform = platform; self.status = status; self.state = state; self.quotaUsed = quotaUsed; self.quotaLabel = quotaLabel; self.directory = directory
     }
 }
 
-struct AIModel: Identifiable, Equatable {
+struct AIModel: Identifiable, Equatable, Codable {
     let id: String
     let provider: String
 }
 
-enum RewriteStyle: String, CaseIterable, Identifiable {
-    case recommendation = "种草"
-    case practical = "干货"
-    case suspense = "悬念"
-    case concise = "简洁"
-
+enum RewriteStyle: String, CaseIterable, Identifiable, Codable {
+    case recommendation = "种草", practical = "干货", suspense = "悬念", concise = "简洁", custom = "自定义"
     var id: String { rawValue }
 }
 
-struct HistoryRecord: Identifiable {
+struct HistoryRecord: Identifiable, Codable {
     let id: UUID
     let originalText: String
     let rewrittenText: String
@@ -167,12 +93,5 @@ extension NetdiskAccount {
 }
 
 extension AIModel {
-    static let mockModels: [AIModel] = [
-        AIModel(id: "deepseek-chat", provider: "DeepSeek"),
-        AIModel(id: "gpt-4o-mini", provider: "OpenAI"),
-        AIModel(id: "claude-sonnet-4", provider: "Anthropic"),
-        AIModel(id: "qwen-plus", provider: "通义"),
-        AIModel(id: "gemini-2.5-flash", provider: "Google"),
-        AIModel(id: "glm-4-plus", provider: "智谱")
-    ]
+    static let mockModels: [AIModel] = [AIModel(id: "deepseek-chat", provider: "DeepSeek"), AIModel(id: "gpt-4o-mini", provider: "OpenAI"), AIModel(id: "claude-sonnet-4", provider: "Anthropic"), AIModel(id: "qwen-plus", provider: "通义"), AIModel(id: "gemini-2.5-flash", provider: "Google"), AIModel(id: "glm-4-plus", provider: "智谱")]
 }

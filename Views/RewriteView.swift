@@ -4,6 +4,7 @@ struct RewriteView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var showShareSheet = false
+    @State private var showCustomRequirements = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -30,6 +31,8 @@ struct RewriteView: View {
                     ForEach(RewriteStyle.allCases) { style in
                         Button {
                             store.rewriteStyle = style
+                            store.saveSettings()
+                            if style == .custom { showCustomRequirements = true }
                             store.generateRewrite(reduceMotion: reduceMotion)
                         } label: {
                             Text(style.rawValue)
@@ -49,6 +52,15 @@ struct RewriteView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
+
+                CompactSegmentedRow(title: "改写程度", values: ["轻改", "中改", "重写"], selection: $store.rewriteIntensity) {
+                    store.saveSettings()
+                    store.generateRewrite(reduceMotion: reduceMotion)
+                }
+                CompactSegmentedRow(title: "发布渠道", values: ["通用", "社群", "小红书"], selection: $store.rewriteChannel) {
+                    store.saveSettings()
+                    store.generateRewrite(reduceMotion: reduceMotion)
+                }
 
                 CardContainer {
                     VStack(alignment: .leading, spacing: 8) {
@@ -116,6 +128,12 @@ struct RewriteView: View {
         .sheet(isPresented: $showShareSheet) {
             ActivityView(items: [store.rewriteOutput])
         }
+        .sheet(isPresented: $showCustomRequirements) {
+            CustomRequirementsView(text: $store.customRequirements) {
+                store.saveSettings()
+                store.generateRewrite(reduceMotion: reduceMotion)
+            }
+        }
     }
 
     private func highlightedText(_ text: String) -> Text {
@@ -139,6 +157,63 @@ struct RewriteView: View {
         let tail = nsText.substring(from: cursor)
         if !tail.isEmpty { result = result + Text(tail).font(AppFont.sans(size: 13)).foregroundColor(AppTheme.text) }
         return result
+    }
+}
+
+private struct CompactSegmentedRow: View {
+    let title: String
+    let values: [String]
+    @Binding var selection: String
+    let onChange: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title).font(AppFont.sans(size: 11)).foregroundColor(AppTheme.secondaryText).frame(width: 52, alignment: .leading)
+            HStack(spacing: 3) {
+                ForEach(values, id: \.self) { value in
+                    Button(value) { selection = value; onChange() }
+                        .font(AppFont.sans(size: 11))
+                        .foregroundColor(selection == value ? AppTheme.text : AppTheme.secondaryText)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 7)
+                        .background(selection == value ? Color(hex: "232A33") : .clear)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .buttonStyle(.plain)
+                }
+            }
+            .padding(3)
+            .background(AppTheme.panel)
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(AppTheme.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+}
+
+private struct CustomRequirementsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var text: String
+    let save: () -> Void
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                AppTheme.background.ignoresSafeArea()
+                TextEditor(text: $text)
+                    .font(AppFont.sans(size: 14))
+                    .foregroundColor(AppTheme.text)
+                    .padding(12)
+                    .background(AppTheme.panel)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .padding(16)
+            }
+            .navigationTitle("自定义要求")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) { Button("完成") { save(); dismiss() } }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }
 

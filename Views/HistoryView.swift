@@ -6,9 +6,7 @@ struct HistoryView: View {
     @State private var query = ""
     @State private var showShareSheet = false
 
-    private var records: [HistoryRecord] {
-        [HistoryRecord(id: UUID(), originalText: store.sourceText, rewrittenText: store.fullMockRewrite, links: store.links, createdAt: Date())]
-    }
+    private var records: [HistoryRecord] { store.storage.loadHistory() + [HistoryRecord(id: UUID(), originalText: store.sourceText, rewrittenText: store.fullMockRewrite, links: store.links, createdAt: Date())] }
 
     var body: some View {
         NavigationView {
@@ -42,6 +40,12 @@ struct HistoryView: View {
                                     .lineLimit(1)
                             }
                         }
+                        HStack(spacing: 10) {
+                            Button("复制文案") { UIPasteboard.general.string = record.rewrittenText }
+                            Button("复制换链") { UIPasteboard.general.string = record.links.map { "\($0.originalURL) → \($0.displayURL)" }.joined(separator: "\n") }
+                        }
+                        .font(AppFont.sans(size: 11))
+                        .foregroundColor(AppTheme.accent)
                     }
                     .padding(.vertical, 6)
                     .listRowBackground(AppTheme.panel)

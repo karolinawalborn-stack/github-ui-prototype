@@ -3,20 +3,63 @@ import SwiftUI
 struct ModelsView: View {
     @EnvironmentObject private var store: AppStore
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var apiKeyInput = ""
+    @State private var temperatureInput = ""
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 0) {
                 PageHeader(caption: "中转站", title: "模型接入") { EmptyView() }
 
-                FieldCard(label: "Base URL", value: "https://api.my-relay.com/v1", monospaced: true)
-                FieldCard(label: "API Key", value: "sk-••••••••••••3f9a", monospaced: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    LabelText(text: "Base URL")
+                    TextField("https://api.my-relay.com/v1", text: $store.baseURL)
+                        .font(AppFont.mono(size: 12))
+                        .foregroundColor(AppTheme.text)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .onSubmit { store.saveSettings() }
+                }
+                .fieldCardStyle()
+                VStack(alignment: .leading, spacing: 6) {
+                    LabelText(text: "API Key")
+                    HStack {
+                        SecureField(store.apiKeyMasked, text: $apiKeyInput)
+                            .font(AppFont.mono(size: 12))
+                            .foregroundColor(AppTheme.text)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        Button("保存") { if !apiKeyInput.isEmpty { store.saveAPIKey(apiKeyInput); apiKeyInput = "" } }
+                            .font(AppFont.sans(size: 11, weight: .medium))
+                            .foregroundColor(AppTheme.accent)
+                    }
+                }
+                .fieldCardStyle()
 
                 AccentButton(title: store.isDetectingModels ? "请求 /v1/models …" : (store.availableModels.isEmpty ? "自动识别模型" : "重新识别"), isBusy: store.isDetectingModels) {
                     store.detectModels(reduceMotion: reduceMotion)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 4)
+
+                HStack(spacing: 10) {
+                    LabelText(text: "Temperature")
+                    TextField("自动", text: $temperatureInput)
+                        .font(AppFont.mono(size: 12))
+                        .foregroundColor(AppTheme.text)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .onSubmit {
+                            store.temperature = Double(temperatureInput)
+                            store.saveSettings()
+                        }
+                        .frame(width: 72)
+                    Button("清空") { temperatureInput = ""; store.temperature = nil; store.saveSettings() }
+                        .font(AppFont.sans(size: 11))
+                        .foregroundColor(AppTheme.secondaryText)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 8)
 
                 HStack {
                     LabelText(text: "可用模型")
@@ -43,6 +86,20 @@ struct ModelsView: View {
                 .padding(.bottom, 24)
             }
         }
+    }
+}
+
+private extension View {
+    func fieldCardStyle() -> some View {
+        self
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(AppTheme.panel)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.line, lineWidth: 1))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
     }
 }
 

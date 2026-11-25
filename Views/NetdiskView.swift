@@ -47,6 +47,14 @@ struct NetdiskView: View {
 
 private struct AccountCard: View {
     let account: NetdiskAccount
+    @State private var directory: String
+    @State private var showLogin = false
+    @State private var showDiagnostics = false
+
+    init(account: NetdiskAccount) {
+        self.account = account
+        _directory = State(initialValue: account.directory)
+    }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -56,10 +64,15 @@ private struct AccountCard: View {
                     Text(account.platform.rawValue)
                         .font(AppFont.sans(size: 13, weight: .medium))
                         .foregroundColor(AppTheme.text)
-                    Text("保存到 \(account.directory)")
-                        .font(AppFont.sans(size: 10))
-                        .foregroundColor(AppTheme.secondaryText)
-                        .lineLimit(1)
+                    HStack(spacing: 4) {
+                        TextField("默认目录", text: $directory)
+                            .font(AppFont.sans(size: 10))
+                            .foregroundColor(AppTheme.secondaryText)
+                            .lineLimit(1)
+                        Image(systemName: "pencil")
+                            .font(.system(size: 9))
+                            .foregroundColor(AppTheme.secondaryText)
+                    }
                 }
                 Spacer()
                 Text(account.state == .online ? "ONLINE" : "RELOGIN")
@@ -80,11 +93,53 @@ private struct AccountCard: View {
             }
             .font(AppFont.mono(size: 10))
             .foregroundColor(AppTheme.secondaryText)
+            HStack(spacing: 8) {
+                Button(account.state == .online ? "重新登录" : "登录") { showLogin = true }
+                Button("退出") { CredentialStore.shared.deleteCookie(platform: account.platform) }
+                Button("诊断") { showDiagnostics = true }
+            }
+            .font(AppFont.sans(size: 10))
+            .foregroundColor(AppTheme.secondaryText)
         }
         .padding(12)
         .background(AppTheme.panel)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(AppTheme.line, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .sheet(isPresented: $showLogin) {
+            NavigationView {
+                WebLoginView(platform: account.platform) { showLogin = false }
+                    .navigationTitle("登录 · \(account.platform.rawValue)")
+                    .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("完成") { showLogin = false } } }
+            }
+        }
+        .sheet(isPresented: $showDiagnostics) { DiagnosticView(platform: account.platform) }
+    }
+}
+
+private struct DiagnosticView: View {
+    let platform: NetdiskPlatform
+    @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var logger = DiagnosticLogger.shared
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                Text(logger.latestText(for: platform) ?? "暂无失败诊断记录")
+                    .font(AppFont.mono(size: 11))
+                    .foregroundColor(AppTheme.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(16)
+            }
+            .background(AppTheme.background)
+            .navigationTitle("诊断")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) { Button("关闭") { dismiss() } }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button { UIPasteboard.general.string = logger.latestText(for: platform) ?? "" } label: { Image(systemName: "doc.on.doc") }
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }
 

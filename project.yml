@@ -24,6 +24,7 @@ targets:
       - Storage
     resources:
       - Resources/Fonts
+      - Resources/Prompts
     info:
       path: Resources/Info.plist
     settings:
