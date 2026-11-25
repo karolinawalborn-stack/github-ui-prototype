@@ -4,12 +4,14 @@ struct ShareInfo: Codable {
     let url: String
     let password: String?
     let token: String?
+    let shareID: String?
 }
 
 struct ShareFile: Codable, Identifiable {
     let id: String
     let name: String
     let isDirectory: Bool
+    let token: String?
 }
 
 struct NetdiskQuota: Codable {
@@ -87,7 +89,7 @@ class RESTNetdiskAdapter: NetdiskAdapter {
         let data = try await request(path: "parse", method: "POST", body: body)
         let object = try jsonObject(data)
         let token = string(object, keys: ["share_token", "shareToken", "token", "share_id", "shareId"])
-        return ShareInfo(url: url.absoluteString, password: password, token: token)
+        return ShareInfo(url: url.absoluteString, password: password, token: token, shareID: nil)
     }
 
     func listShareFiles(dir: String) async throws -> [ShareFile] {
@@ -119,7 +121,7 @@ class RESTNetdiskAdapter: NetdiskAdapter {
             throw NetdiskAdapterError.permanentUnsupported(unsupported)
         }
         guard let url = string(object, keys: ["url", "share_url", "shareUrl"]) else { throw NetdiskAdapterError.invalidResponse }
-        return ShareInfo(url: url, password: string(object, keys: ["pwd", "password", "access_code"]), token: string(object, keys: ["token", "share_id"]))
+        return ShareInfo(url: url, password: string(object, keys: ["pwd", "password", "access_code"]), token: string(object, keys: ["token", "share_id"]), shareID: string(object, keys: ["share_id", "shareId"]))
     }
 
     func request(path: String, method: String, body: Data?, query: [URLQueryItem] = []) async throws -> Data {
@@ -154,7 +156,7 @@ class RESTNetdiskAdapter: NetdiskAdapter {
             guard let id = item["id"] as? String ?? item["fs_id"] as? String ?? (item["id"] as? NSNumber)?.stringValue else { return nil }
             let name = item["name"] as? String ?? "未命名文件"
             let isDirectory = (item["isdir"] as? Bool) ?? (item["is_dir"] as? Bool) ?? ((item["type"] as? String) == "folder")
-            return ShareFile(id: id, name: name, isDirectory: isDirectory)
+            return ShareFile(id: id, name: name, isDirectory: isDirectory, token: item["share_fid_token"] as? String ?? item["fid_token"] as? String)
         }
     }
 
@@ -188,7 +190,7 @@ final class GuangyaNetdiskAdapter: RESTNetdiskAdapter { init() { super.init(plat
 enum NetdiskAdapterFactory {
     static func make(_ platform: NetdiskPlatform) -> NetdiskAdapter {
         switch platform {
-        case .quark: return QuarkNetdiskAdapter()
+        case .quark: return RealQuarkNetdiskAdapter()
         case .uc: return UCNetdiskAdapter()
         case .xunlei: return XunleiNetdiskAdapter()
         case .baidu: return BaiduNetdiskAdapter()
