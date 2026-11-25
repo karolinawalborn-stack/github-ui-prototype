@@ -1,0 +1,44 @@
+name: Build unsigned IPA
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build unsigned app
+        run: |
+          xcodebuild \
+            -project PanRelay.xcodeproj \
+            -scheme PanRelay \
+            -sdk iphoneos \
+            -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: Package IPA
+        run: |
+          rm -rf Payload PanRelay-unsigned.ipa
+          mkdir Payload
+          cp -R build/Build/Products/Release-iphoneos/PanRelay.app Payload/PanRelay.app
+          /usr/bin/zip -qry PanRelay-unsigned.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PanRelay-unsigned-ipa
+          path: PanRelay-unsigned.ipa
