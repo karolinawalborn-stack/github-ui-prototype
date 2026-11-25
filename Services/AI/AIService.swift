@@ -143,7 +143,7 @@ final class RewriteTemplateEngine {
         let ratio = sourceCharacterCount == 0 ? 0 : Double(count) / Double(sourceCharacterCount)
         if count > Int(Double(template.validation.maxCharacters) * template.validation.hardCharacterRatio) { issues.append(ValidationIssue(message: "正文超出长度上限", severity: .hard)) }
         else if ratio > template.validation.softCharacterRatio { issues.append(ValidationIssue(message: "正文偏长", severity: .soft)) }
-        let emojiCount = cleaned.unicodeScalars.filter { $0.properties.isEmoji && !$0.properties.isASCII }.count
+        let emojiCount = cleaned.unicodeScalars.filter { $0.properties.isEmoji && $0.value > 127 }.count
         if emojiCount < template.validation.emojiMin || emojiCount > template.validation.emojiMax { issues.append(ValidationIssue(message: "emoji 数量不在建议范围", severity: .soft)) }
         return ValidationResult(cleanedText: cleaned, issues: issues)
     }
@@ -188,12 +188,10 @@ final class OpenAICompatibleService: AIService {
                     let built = try engine.build(style: style, intensity: intensity, channel: channel, customRequirements: customRequirements, changedSource: changed.text, placeholders: placeholders)
                     let first = try await streamRequest(system: built.system, user: built.user, model: model, baseURL: baseURL, apiKey: apiKey, temperature: temperature ?? built.temperature)
                     var validation = engine.validate(first, template: built.retry, placeholders: placeholders, sourceCharacterCount: source.count)
-                    var finalText = first
                     if !validation.isValid {
                         let retry = engine.retryPrompt(template: built.retry, source: placeholders.source, errors: validation.issues.map(\.message))
                         let second = try await streamRequest(system: built.system, user: retry, model: model, baseURL: baseURL, apiKey: apiKey, temperature: temperature ?? built.temperature)
                         validation = engine.validate(second, template: built.retry, placeholders: placeholders, sourceCharacterCount: source.count)
-                        finalText = second
                     }
                     guard validation.isValid else { throw AIServiceError.validationFailed(validation.issues.map(\.message)) }
                     let restored = placeholders.restore(validation.cleanedText)

@@ -126,7 +126,7 @@ final class TransferQueue: ObservableObject {
                     let output = try await adapter.createShare(fileIds: files.map(\.id), permanent: true)
                     return .success(LinkReplacement(match: match, newURL: output.url, newPassword: output.password))
                 } catch {
-                    if attempt == 2 || error is NetdiskAdapterError.unauthorized || error is NetdiskAdapterError.captchaRequired || error is NetdiskAdapterError.permanentUnsupported { return .failure(error) }
+                    if attempt == 2 || Self.isTerminal(error) { return .failure(error) }
                     try? await Task.sleep(nanoseconds: UInt64(pow(2.0, Double(attempt)) * 500_000_000))
                 }
             }
@@ -148,6 +148,14 @@ final class TransferQueue: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
         return formatter.string(from: Date())
+    }
+
+    private static func isTerminal(_ error: Error) -> Bool {
+        guard let adapterError = error as? NetdiskAdapterError else { return false }
+        switch adapterError {
+        case .unauthorized, .captchaRequired, .permanentUnsupported: return true
+        case .invalidResponse, .requestFailed: return false
+        }
     }
 }
 
