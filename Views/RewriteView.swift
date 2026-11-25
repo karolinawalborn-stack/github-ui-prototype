@@ -138,7 +138,7 @@ struct RewriteView: View {
         }
         let tail = nsText.substring(from: cursor)
         if !tail.isEmpty { result = result + Text(tail).font(AppFont.sans(size: 13)).foregroundColor(AppTheme.text) }
-        return result.lineSpacing(6)
+        return result
     }
 }
 
