@@ -114,14 +114,7 @@ final class TransferQueue: ObservableObject {
                     guard let url = URL(string: match.url) else { throw NetdiskAdapterError.invalidResponse }
                     let share = try await adapter.parseShare(url: url, password: match.password)
                     let files = try await adapter.listShareFiles(dir: share.token ?? "/")
-                    let target = "/拉新资源/\(Self.dateFolder())"
-                    let folders = try await adapter.listMyFolders(dir: target)
-                    let folder: String
-                    if let existing = folders.first(where: { $0.name == target })?.id {
-                        folder = existing
-                    } else {
-                        folder = try await adapter.createFolder(name: target, parent: "/")
-                    }
+                    let folder = try await resolveTargetFolder(adapter: adapter, platform: match.platform)
                     try await adapter.saveToMyDrive(shareFiles: files, targetFolder: folder)
                     let output = try await adapter.createShare(fileIds: files.map(\.id), permanent: true)
                     return .success(LinkReplacement(match: match, newURL: output.url, newPassword: output.password))
@@ -148,6 +141,21 @@ final class TransferQueue: ObservableObject {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM"
         return formatter.string(from: Date())
+    }
+
+    private func resolveTargetFolder(adapter: NetdiskAdapter, platform: NetdiskPlatform) async throws -> String {
+        let configured = storage.loadSettings().directories[platform] ?? "/云转"
+        let components = configured.split(separator: "/").map(String.init) + [Self.dateFolder()]
+        var parent = "0"
+        for component in components where !component.isEmpty {
+            let folders = try await adapter.listMyFolders(dir: parent)
+            if let existing = folders.first(where: { $0.name == component }) {
+                parent = existing.id
+            } else {
+                parent = try await adapter.createFolder(name: component, parent: parent)
+            }
+        }
+        return parent
     }
 
     private static func isTerminal(_ error: Error) -> Bool {
